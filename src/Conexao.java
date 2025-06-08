@@ -7,13 +7,13 @@ public class Conexao {
     public static void main(String[] args) {
 
         // Define a URL do banco de dados (ajuste conforme seu host, porta e nome do banco)
-        String url = "jdbc:mysql://localhost:3306/seu_banco";
+        String url = "jdbc:mysql://localhost:3306/vacinasdb";
 
         // Nome de usuário do banco de dados
         String usuario = "root";
 
         // Senha do banco de dados
-        String senha = "";
+        String senha = "263012";
 
         try {
             // Carrega o driver JDBC do MySQL (necessário em versões mais antigas do Java)
