@@ -144,9 +144,6 @@ public class Main {
         System.out.print("Digite o ID da sua região: ");
         int idRegiao = scanner.nextInt();
         scanner.nextLine();
-
-        // Esta requisição une as 3 tabelas para encontrar os nomes das vacinas (sem repetição)
-        // que foram aplicadas em pacientes de uma determinada região.
         String sql = """
             SELECT v.nome_vacina
             FROM Vacinas v
