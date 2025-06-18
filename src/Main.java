@@ -2,6 +2,8 @@ import java.sql.*;
 import java.util.Scanner;
 
 public class Main {
+
+    // --- CONFIGURAÇÃO DA CONEXÃO COM O BANCO DE DADOS ---
     private static final String URL = "jdbc:mysql://localhost:3306/vacinasdb";
     private static final String USER = "root";
     private static final String PASSWORD = "root";
@@ -11,9 +13,14 @@ public class Main {
         Connection conn = null;
 
         try {
+            // ESTABELECER A CONEXÃO
+            // O DriverManager tenta encontrar um driver JDBC adequado para a URL fornecida
+            // e usa as credenciais para estabelecer uma sessão com o banco de dados.
             conn = DriverManager.getConnection(URL, USER, PASSWORD);
             System.out.println("Conexão realizada com sucesso!");
 
+            // --- LOOP PRINCIPAL DA APLICAÇÃO ---
+            // O while serve para exibir um menu em execução até que o usuário escolha sair.
             while (true) {
                 System.out.println("\n--- MENU ---");
                 System.out.println("1. Cadastrar paciente");
@@ -42,11 +49,17 @@ public class Main {
             }
 
         } catch (SQLException e) {
-            System.out.println("Erro de conexão: " + e.getMessage());
+            // Captura qualquer exceção relacionada a operações SQL,
+            // como falha na conexão, erro de sintaxe na query, etc.
+            System.out.println("Erro de SQL ou de conexão: " + e.getMessage());
         }
     }
 
+    /**
+     * Cadastra um novo paciente no banco de dados.
+     */
     private static void cadastrarPaciente(Connection conn, Scanner scanner) throws SQLException {
+        //  (coleta de dados do usuário)
         System.out.println("Nome completo:");
         String nome = scanner.nextLine();
         System.out.println("Data de nascimento (YYYY-MM-DD):");
@@ -55,11 +68,14 @@ public class Main {
         String endereco = scanner.nextLine();
         System.out.println("Telefone:");
         String telefone = scanner.nextLine();
-        System.out.println("DDD da região de moradia:");
+        System.out.println("ID da região de moradia (Ex: 11 para SP, 21 para RJ):");
         int idRegiao = scanner.nextInt();
         scanner.nextLine();
 
         String sql = "INSERT INTO pacientes (nome_completo, data_nascimento, endereco_completo, telefone, id_regiao_moradia) VALUES (?, ?, ?, ?, ?)";
+
+        // Ele trata os dados de entrada como literais,
+        // e não como parte do comando SQL
         PreparedStatement stmt = conn.prepareStatement(sql);
         stmt.setString(1, nome);
         stmt.setDate(2, Date.valueOf(dataNascimento));
@@ -67,11 +83,17 @@ public class Main {
         stmt.setString(4, telefone);
         stmt.setInt(5, idRegiao);
 
+        // O metodo executeUpdate() é usado para comandos que modificam dados (INSERT, UPDATE, DELETE).
+        // Ele retorna o número de linhas afetadas pela operação.
         int rows = stmt.executeUpdate();
         System.out.println(rows + " paciente(s) cadastrado(s).");
     }
 
+    /**
+     * Cadastra um novo tipo de vacina no sistema.
+     */
     private static void cadastrarVacina(Connection conn, Scanner scanner) throws SQLException {
+        // (coleta de dados e inserção similar ao cadastrarPaciente)
         System.out.println("Nome da vacina:");
         String nome = scanner.nextLine();
         System.out.println("Número de doses no esquema:");
@@ -87,6 +109,9 @@ public class Main {
         System.out.println(rows + " vacina(s) cadastrada(s).");
     }
 
+    /**
+     * Registra a aplicação de uma vacina em um paciente.
+     */
     private static void registrarVacinacao(Connection conn, Scanner scanner) throws SQLException {
         System.out.println("ID do paciente:");
         int idPaciente = scanner.nextInt();
@@ -112,6 +137,9 @@ public class Main {
         System.out.println(rows + " registro(s) de vacinação inserido(s).");
     }
 
+    /**
+     * Consulta as vacinas disponíveis em uma determinada região.
+     */
     private static void vacinasLiberadasRegiao(Connection conn, Scanner scanner) throws SQLException {
         System.out.print("Digite o ID da sua região: ");
         int idRegiao = scanner.nextInt();
@@ -120,11 +148,10 @@ public class Main {
         // Esta requisição une as 3 tabelas para encontrar os nomes das vacinas (sem repetição)
         // que foram aplicadas em pacientes de uma determinada região.
         String sql = """
-            SELECT DISTINCT v.nome_vacina
+            SELECT v.nome_vacina
             FROM Vacinas v
-            JOIN RegistrosVacinacao rv ON v.id_vacina = rv.id_vacina
-            JOIN Pacientes p ON rv.id_paciente = p.id_paciente
-            WHERE p.id_regiao_moradia = ?
+            JOIN VacinasLiberadasRegiao vlr ON v.id_vacina = vlr.id_vacina
+            WHERE vlr.id_regiao = ?
             """;
 
         PreparedStatement stmt = conn.prepareStatement(sql);
@@ -144,13 +171,23 @@ public class Main {
         }
     }
 
+    /**
+     * Lista todas as pessoas vacinadas em uma região específica.
+     */
     private static void listaDeVacinados(Connection conn, Scanner scanner) throws SQLException {
         System.out.print("Digite o ID da região a ser consultada: ");
         int regiao = scanner.nextInt();
         scanner.nextLine();
 
+        // LÓGICA DA CONSULTA:
+        //  Começa pela tabela de RegistrosVacinacao.
+        //  Usa JOIN para buscar o nome da vacina na tabela `Vacinas`.
+        //  Usa JOIN para buscar os dados do paciente na tabela `Pacientes`.
+        //  Filtra os resultados para pacientes que pertencem à região desejada.
+        //  O DISTINCT evita que a mesma combinação de pessoa/vacina apareça múltiplas vezes
+        //    caso ela tenha tomado mais de uma dose da mesma vacina.
         String sql = """
-        SELECT DISTINCT v.nome_vacina, p.nome_completo
+        SELECT DISTINCT p.nome_completo, v.nome_vacina
         FROM RegistrosVacinacao rv
         JOIN Vacinas v ON rv.id_vacina = v.id_vacina
         JOIN Pacientes p ON rv.id_paciente = p.id_paciente
